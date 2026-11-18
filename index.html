@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f5c4d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Netto Attendance">
+<title>Netto Home Attendance</title>
+<style>
+:root{--g:#0f5c4d;--g2:#14806b;--gl:#e6f3ef;--bg:#f4f6f5;--card:#fff;--tx:#1d2724;--mu:#6b7a75;--bd:#dde4e1;--red:#c0392b;--redl:#fbeaea;--amb:#b7791f;--ambl:#fdf3e1}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--g);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+header .clock{font-size:13px;opacity:.85}
+main{padding:12px 12px calc(84px + env(safe-area-inset-bottom));max-width:760px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:5;background:#fff;border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:8px 0 9px;font-size:11px;color:var(--mu);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--g);font-weight:600}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.sec{font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.6px;margin:16px 4px 8px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sub{font-size:12.5px;color:var(--mu)}
+.pill{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.pill.P{background:var(--gl);color:var(--g)}.pill.A{background:var(--redl);color:var(--red)}.pill.IN{background:var(--ambl);color:var(--amb)}.pill.L{background:#eee;color:#555}
+.btn{border:1px solid var(--bd);background:#fff;color:var(--tx);border-radius:9px;padding:9px 13px;font-size:14px;font-weight:600;cursor:pointer}
+.btn.pri{background:var(--g);border-color:var(--g);color:#fff}
+.btn.out{background:var(--amb);border-color:var(--amb);color:#fff}
+.btn.dan{color:var(--red);border-color:#efc9c4}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn:disabled{opacity:.4}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+label.f{display:block;font-size:12px;color:var(--mu);font-weight:600}
+input,select{width:100%;font:inherit;padding:9px 10px;border:1px solid var(--bd);border-radius:9px;background:#fff;color:var(--tx);margin-top:3px;min-height:40px}
+input:disabled{background:#f2f4f3;color:#8a9692}
+.dnav{display:flex;align-items:center;gap:8px}
+.dnav input{flex:1;margin:0;text-align:center;font-weight:600}
+.dnav .btn{padding:8px 13px;font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px}
+.stat span{font-size:11.5px;color:var(--mu)}
+.now{border-left:4px solid var(--amb)}
+.lock{background:var(--ambl);color:#7a5413;border-radius:9px;padding:8px 10px;font-size:13px;margin-top:10px}
+.empty{text-align:center;color:var(--mu);padding:26px 12px}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px}
+table.t th,table.t td{padding:8px 6px;border-bottom:1px solid var(--bd);text-align:left}
+table.t th{font-size:11.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px}
+table.t td.n,table.t th.n{text-align:right}
+.tw{overflow-x:auto}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.sheet h2{margin:0 0 12px;font-size:17px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg{margin-bottom:10px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:99px;font-size:13.5px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+.days{margin-top:8px;font-size:13px}
+.days div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--bd)}
+.hint{font-size:12.5px;color:var(--mu);margin-top:6px}
+#print{display:none}
+@media print{
+  @page{size:A4 landscape;margin:9mm}
+  body{background:#fff}
+  header,nav,main,#toast,.modal{display:none!important}
+  #print{display:block;font:10px/1.3 Arial,sans-serif;color:#000}
+  #print h2{font-size:15px;margin:0 0 2px}
+  #print .meta{font-size:10px;color:#444;margin-bottom:8px}
+  #print table{border-collapse:collapse;width:100%}
+  #print th,#print td{border:1px solid #999;padding:3px 4px;text-align:center}
+  #print th{background:#e6f3ef;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print td.l,#print th.l{text-align:left}
+  #print td.A{background:#fbeaea;color:#a02b1f;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print td.P{color:#0f5c4d;font-weight:700}
+  #print td.x{color:#aaa}
+  #print tr.we td{background:#f6f6f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print .foot{margin-top:6px;font-size:9px;color:#555}
+  #print .blk{page-break-inside:avoid;margin-bottom:12px}
+}
+</style>
+</head>
+<body>
+<header><h1>Netto Home Attendance</h1><span class="clock" id="clock"></span></header>
+<main id="app"></main>
+<nav id="nav">
+  <button data-v="today" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Today</button>
+  <button data-v="month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Month</button>
+  <button data-v="staff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.6.8 2.6 2.6 3 5.2"/></svg>Personnel</button>
+  <button data-v="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></svg>Reports</button>
+  <button data-v="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+</nav>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+<div id="print"></div>
+
+<script>
+'use strict';
+const KEY='netto_home_att_v1';
+const OWNER_EMAIL='navindewaji@gmail.com';
+const FOR_OPTS=['Jonu','Hosu','Home','Other'];
+const EDIT_DAYS=7;
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+/* ---------- storage ---------- */
+function blank(){return {staff:[],att:{},nextSr:1,settings:{email:OWNER_EMAIL,syncUrl:'',syncKey:''},updated:0}}
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(KEY));
+    if(s&&Array.isArray(s.staff)){const b=blank();s.att=s.att||{};s.settings=Object.assign(b.settings,s.settings||{});s.nextSr=s.nextSr||(s.staff.reduce((m,x)=>Math.max(m,x.sr||0),0)+1);return s;}
+  }catch(e){}
+  return blank();
+}
+let S=load();
+function save(){S.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('Could not save on this device');}scheduleSync();}
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>ymd(new Date());
+const thisMonth=()=>today().slice(0,7);
+function pd(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
+function addDays(s,n){const d=pd(s);d.setDate(d.getDate()+n);return ymd(d);}
+const minEdit=()=>addDays(today(),-EDIT_DAYS);
+const canEdit=ds=>ds>=minEdit()&&ds<=today();
+const nowHM=()=>{const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes());};
+const toM=hm=>{const[h,m]=hm.split(':').map(Number);return h*60+m;};
+function fmt12(hm){if(!hm)return '';let[h,m]=hm.split(':').map(Number);const ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+pad(m)+' '+ap;}
+function mins(a,b){if(!a||!b)return 0;let x=toM(b)-toM(a);if(x<0)x+=1440;return x;}
+const fmtDur=m=>Math.floor(m/60)+'h '+pad(m%60)+'m';
+const fmtHrs=m=>m?(m/60).toFixed(1):'';
+function fmtDate(ds){const d=pd(ds);return DOW[d.getDay()]+', '+d.getDate()+' '+MON[d.getMonth()].slice(0,3)+' '+d.getFullYear();}
+function monthDays(ym){const[y,m]=ym.split('-').map(Number);const n=new Date(y,m,0).getDate();return Array.from({length:n},(_,i)=>ym+'-'+pad(i+1));}
+function monthName(ym){const[y,m]=ym.split('-').map(Number);return MON[m-1]+' '+y;}
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>n?'₹'+Math.round(n).toLocaleString('en-IN'):'';
+const forLabel=st=>st.forWho==='Other'?(st.forOther||'Other'):(st.forWho||'');
+const employed=(st,ds)=>(!st.start||ds>=st.start)&&(!st.end||ds<=st.end);
+const rec=(ds,id)=>(S.att[ds]||{})[id];
+function status(st,ds){if(!employed(st,ds)||ds>today())return '-';const r=rec(ds,st.id);return r&&r.in?'P':'A';}
+const sorted=()=>[...S.staff].sort((a,b)=>a.sr-b.sr);
+function uid(){return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2300);}
+
+/* ---------- attendance writes ---------- */
+function setTime(ds,id,field,val){
+  if(!canEdit(ds)){toast('Locked — only the last '+EDIT_DAYS+' days can be edited');return false;}
+  const day=S.att[ds]||{};const r=Object.assign({},day[id]||{});
+  if(field==='out'&&val&&!r.in){toast('Enter the In time first');return false;}
+  r[field]=val||'';
+  if(field==='in'&&!val){r.out='';}
+  if(!r.in&&!r.out){delete day[id];}else{r.ts=Date.now();day[id]=r;}
+  if(Object.keys(day).length)S.att[ds]=day;else delete S.att[ds];
+  save();return true;
+}
+
+/* ---------- monthly totals ---------- */
+function monthStats(st,ym){
+  let P=0,A=0,M=0,W=0;const lim=today();
+  for(const ds of monthDays(ym)){
+    if(!employed(st,ds)||ds>lim)continue;W++;
+    const r=rec(ds,st.id);if(r&&r.in){P++;M+=mins(r.in,r.out);}else A++;
+  }
+  const dim=monthDays(ym).length;const pay=st.salary?st.salary/dim*P:0;
+  return {P,A,M,W,pay};
+}
+
+/* ---------- views ---------- */
+let view='today',curDate=today(),curMonth=thisMonth(),repMonth=thisMonth(),repFor='All',openRow=null;
+function go(v){view=v;document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));render();window.scrollTo(0,0);}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+function render(){({today:vToday,month:vMonth,staff:vStaff,reports:vReports,settings:vSettings})[view]();}
+
+function vToday(){
+  if(curDate>today())curDate=today();
+  const ds=curDate,isT=ds===today(),ed=canEdit(ds);
+  const list=sorted().filter(st=>employed(st,ds));
+  const inNow=list.filter(st=>{const r=rec(ds,st.id);return r&&r.in&&!r.out;});
+  const pres=list.filter(st=>{const r=rec(ds,st.id);return r&&r.in;}).length;
+  let h=`<div class="card"><div class="dnav">
+    <button class="btn" id="dPrev" ${ds<=minEdit()?'disabled':''}>‹</button>
+    <input type="date" id="dPick" value="${ds}" min="${minEdit()}" max="${today()}">
+    <button class="btn" id="dNext" ${isT?'disabled':''}>›</button></div>
+    <div class="row" style="margin-top:8px"><span class="sub">${fmtDate(ds)}${isT?' · Today':''}</span>
+    ${isT?'':'<button class="btn sm" id="dToday">Go to today</button>'}</div>
+    ${isT?'':`<div class="hint">Entering data for an earlier day. Records from ${fmtDate(minEdit())} onwards can be added or edited.</div>`}
+  </div>
+  <div class="stats"><div class="stat"><b>${pres}</b><span>Present</span></div>
+  <div class="stat"><b>${isT?inNow.length:list.length-pres}</b><span>${isT?'Checked in now':'Absent'}</span></div>
+  <div class="stat"><b>${list.length}</b><span>Personnel</span></div></div>`;
+  if(isT){
+    h+=`<div class="sec">Currently checked in (${inNow.length})</div>`;
+    h+=inNow.length?inNow.map(st=>{const r=rec(ds,st.id);return `<div class="card now"><div class="row"><div><b>${esc(st.name)}</b>
+      <div class="sub">${esc(st.work||'')}${st.work?' · ':''}${esc(forLabel(st))}</div>
+      <div class="sub">In since ${fmt12(r.in)} · ${fmtDur(mins(r.in,nowHM()))}</div></div>
+      <button class="btn out sm" data-act="outnow" data-id="${st.id}">Check out</button></div></div>`;}).join('')
+      :`<div class="card empty" style="padding:14px">Nobody is checked in right now.</div>`;
+  }
+  h+=`<div class="sec">Mark attendance</div>`;
+  if(!S.staff.length)h+=`<div class="card empty">No personnel yet.<br><br><button class="btn pri" onclick="go('staff');setTimeout(()=>editStaff(),50)">Add personnel</button></div>`;
+  else if(!list.length)h+=`<div class="card empty">No personnel employed on this date.</div>`;
+  for(const st of list){
+    const r=rec(ds,st.id)||{};const s=r.in?(r.out?'P':'IN'):'A';
+    const lbl={P:'Present',IN:'Checked in',A:isT?'Not in yet':'Absent'}[s];
+    h+=`<div class="card"><div class="row"><div><b>${st.sr}. ${esc(st.name)}</b>
+      <div class="sub">${esc(st.work||'')}${st.work?' · ':''}For: ${esc(forLabel(st))}</div></div>
+      <span class="pill ${s==='IN'?'IN':s==='P'?'P':'A'}">${lbl}</span></div>
+      <div class="times"><label class="f">In time<input type="time" data-f="in" data-id="${st.id}" value="${r.in||''}" ${ed?'':'disabled'}></label>
+      <label class="f">Out time<input type="time" data-f="out" data-id="${st.id}" value="${r.out||''}" ${ed&&r.in?'':'disabled'}></label></div>
+      ${r.in&&r.out?`<div class="sub" style="margin-top:6px">Worked ${fmtDur(mins(r.in,r.out))}</div>`:''}
+      <div class="btns">
+      ${isT&&!r.in?`<button class="btn pri" data-act="innow" data-id="${st.id}">Check in now</button>`:''}
+      ${isT&&r.in&&!r.out?`<button class="btn out" data-act="outnow" data-id="${st.id}">Check out now</button>`:''}
+      ${r.in&&ed?`<button class="btn sm dan" data-act="clear" data-id="${st.id}">Clear</button>`:''}
+      </div></div>`;
+  }
+  if(!ed)h+=`<div class="lock">This date is older than ${EDIT_DAYS} days and is locked.</div>`;
+  $('#app').innerHTML=h;
+  $('#dPick').onchange=e=>{const v=e.target.value;if(!v)return;if(v>today()){toast('Future dates are not allowed');}else if(v<minEdit()){toast('Only the last '+EDIT_DAYS+' days can be entered — see Month view for older records');}else curDate=v;render();};
+  $('#dPrev').onclick=()=>{curDate=addDays(curDate,-1);render();};
+  $('#dNext').onclick=()=>{curDate=addDays(curDate,1);render();};
+  const dt=$('#dToday');if(dt)dt.onclick=()=>{curDate=today();render();};
+  document.querySelectorAll('input[data-f]').forEach(i=>i.onchange=()=>{setTime(ds,i.dataset.id,i.dataset.f,i.value);render();});
+  document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.id,a=b.dataset.act,st=S.staff.find(x=>x.id===id);
+    if(a==='innow'){if(setTime(ds,id,'in',nowHM()))toast(st.name+' checked in at '+fmt12(nowHM()));}
+    if(a==='outnow'){if(setTime(ds,id,'out',nowHM()))toast(st.name+' checked out at '+fmt12(nowHM()));}
+    if(a==='clear'){if(confirm('Clear in/out times for '+st.name+' on '+fmtDate(ds)+'?'))setTime(ds,id,'in','');}
+    render();
+  });
+}
+
+function vMonth(){
+  const ym=curMonth,list=sorted().filter(st=>monthDays(ym).some(d=>employed(st,d)));
+  let tP=0,tA=0,tM=0,tPay=0;
+  let rows=list.map(st=>{const m=monthStats(st,ym);tP+=m.P;tA+=m.A;tM+=m.M;tPay+=m.pay;
+    let det='';
+    if(openRow===st.id){det=`<tr><td colspan="6"><div class="days">`+monthDays(ym).filter(d=>d<=today()&&employed(st,d)).map(d=>{const r=rec(d,st.id);
+      return `<div><span>${pd(d).getDate()} ${DOW[pd(d).getDay()]}</span><span>${r&&r.in?fmt12(r.in)+' – '+(r.out?fmt12(r.out):'…'):'<b style="color:var(--red)">A</b>'}</span></div>`;}).join('')+`</div></td></tr>`;}
+    return `<tr data-row="${st.id}" style="cursor:pointer"><td><b>${esc(st.name)}</b><div class="sub">${esc(forLabel(st))}</div></td>
+      <td class="n" style="color:var(--g);font-weight:700">${m.P}</td><td class="n" style="color:var(--red);font-weight:700">${m.A}</td>
+      <td class="n">${fmtHrs(m.M)||'0'}</td><td class="n">${money(st.salary)}</td><td class="n">${money(m.pay)}</td></tr>`+det;}).join('');
+  $('#app').innerHTML=`<div class="card"><label class="f">Month<input type="month" id="mPick" value="${ym}" max="${thisMonth()}"></label></div>
+  <div class="stats"><div class="stat"><b>${tP}</b><span>Present days</span></div><div class="stat"><b>${tA}</b><span>Absent days</span></div><div class="stat"><b>${fmtHrs(tM)||0}</b><span>Hours</span></div></div>
+  <div class="sec">Total attendance — ${monthName(ym)}</div>
+  <div class="card tw">${list.length?`<table class="t"><thead><tr><th>Name</th><th class="n">P</th><th class="n">A</th><th class="n">Hrs</th><th class="n">Salary</th><th class="n">Pro-rata</th></tr></thead>
+  <tbody>${rows}</tbody><tfoot><tr><th>Total</th><th class="n">${tP}</th><th class="n">${tA}</th><th class="n">${fmtHrs(tM)||0}</th><th></th><th class="n">${money(tPay)}</th></tr></tfoot></table>`:'<div class="empty">No personnel for this month.</div>'}</div>
+  <div class="hint">Tap a name to see day-wise times. Days counted up to today, within each person's start/end dates. Pro-rata = monthly salary ÷ days in month × present days (estimate).</div>`;
+  $('#mPick').onchange=e=>{if(e.target.value){curMonth=e.target.value;openRow=null;render();}};
+  document.querySelectorAll('[data-row]').forEach(r=>r.onclick=()=>{openRow=openRow===r.dataset.row?null:r.dataset.row;render();});
+}
+
+function vStaff(){
+  const t=today();
+  const list=sorted();
+  $('#app').innerHTML=`<div class="row" style="margin:4px 2px 10px"><span class="sec" style="margin:0">Personnel (${list.length})</span><button class="btn pri" id="addSt">+ Add</button></div>`+
+  (list.length?list.map(st=>{const act=employed(st,t);return `<div class="card"><div class="row"><div><b>${st.sr}. ${esc(st.name)}</b>
+    <div class="sub">${esc(st.work||'—')} · For: ${esc(forLabel(st))}</div>
+    <div class="sub">From ${st.start?fmtDate(st.start):'—'}${st.end?' to '+fmtDate(st.end):''}${st.salary?' · '+money(st.salary)+'/month':''}</div></div>
+    <span class="pill ${act?'P':'L'}">${act?'Active':(st.start>t?'Not started':'Ended')}</span></div>
+    <div class="btns"><button class="btn sm" data-ed="${st.id}">Edit</button><button class="btn sm dan" data-del="${st.id}">Delete</button></div></div>`;}).join('')
+  :`<div class="card empty">Add the people whose attendance you want to mark.</div>`);
+  $('#addSt').onclick=()=>editStaff();
+  document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>editStaff(b.dataset.ed));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delStaff(b.dataset.del));
+}
+function editStaff(id){
+  const st=id?S.staff.find(x=>x.id===id):{name:'',work:'',forWho:'Home',forOther:'',start:today(),end:'',salary:''};
+  openModal(`<h2>${id?'Edit':'Add'} personnel</h2>
+  <div class="fg"><label class="f">Sr No.<input value="${id?st.sr:S.nextSr}" disabled></label></div>
+  <div class="fg"><label class="f">Name of staff *<input id="fName" value="${esc(st.name)}" autocomplete="off"></label></div>
+  <div class="fg"><label class="f">Nature of work<input id="fWork" value="${esc(st.work)}" placeholder="e.g. Cook, Driver, Maid, Nanny"></label></div>
+  <div class="fg"><label class="f">For who<select id="fFor">${FOR_OPTS.map(o=>`<option value="${o}" ${st.forWho===o?'selected':''}>${o==='Other'?'Other (free text)':o}</option>`).join('')}</select></label></div>
+  <div class="fg" id="fOtherW" style="display:${st.forWho==='Other'?'block':'none'}"><label class="f">For who (free text)<input id="fOther" value="${esc(st.forOther)}"></label></div>
+  <div class="grid2 fg"><label class="f">Start date *<input type="date" id="fStart" value="${st.start||''}"></label>
+  <label class="f">End date<input type="date" id="fEnd" value="${st.end||''}"></label></div>
+  <div class="fg"><label class="f">Salary / month (₹)<input type="number" inputmode="numeric" id="fSal" value="${st.salary||''}" min="0"></label></div>
+  <div class="btns" style="justify-content:flex-end"><button class="btn" id="fCancel">Cancel</button><button class="btn pri" id="fSave">Save</button></div>`);
+  $('#fFor').onchange=e=>$('#fOtherW').style.display=e.target.value==='Other'?'block':'none';
+  $('#fCancel').onclick=closeModal;
+  $('#fSave').onclick=()=>{
+    const v={name:$('#fName').value.trim(),work:$('#fWork').value.trim(),forWho:$('#fFor').value,forOther:$('#fOther').value.trim(),start:$('#fStart').value,end:$('#fEnd').value,salary:Number($('#fSal').value)||0};
+    if(!v.name)return toast('Name is required');
+    if(!v.start)return toast('Start date is required');
+    if(v.end&&v.end<v.start)return toast('End date is before start date');
+    if(v.forWho==='Other'&&!v.forOther)return toast('Enter who this person works for');
+    if(id)Object.assign(st,v);else S.staff.push(Object.assign({id:uid(),sr:S.nextSr++},v));
+    save();closeModal();toast('Saved');render();
+  };
+  setTimeout(()=>$('#fName').focus(),100);
+}
+function delStaff(id){
+  const st=S.staff.find(x=>x.id===id);
+  const n=Object.values(S.att).filter(d=>d[id]).length;
+  if(!confirm(`Delete ${st.name}?${n?`\n\nThis also deletes ${n} attendance record(s). Tip: to keep history, edit and set an End date instead.`:''}`))return;
+  S.staff=S.staff.filter(x=>x.id!==id);
+  for(const d of Object.keys(S.att)){delete S.att[d][id];if(!Object.keys(S.att[d]).length)delete S.att[d];}
+  save();toast('Deleted');render();
+}
+
+function repStaff(ym){return sorted().filter(st=>(repFor==='All'||forLabel(st)===repFor)&&monthDays(ym).some(d=>employed(st,d)));}
+function vReports(){
+  const fors=['All',...new Set(sorted().map(forLabel))];
+  $('#app').innerHTML=`<div class="card"><div class="grid2"><label class="f">Month<input type="month" id="rMonth" value="${repMonth}"></label>
+  <label class="f">For who<select id="rFor">${fors.map(f=>`<option ${f===repFor?'selected':''}>${esc(f)}</option>`).join('')}</select></label></div></div>
+  <div class="sec">Print / save as PDF</div>
+  <div class="card"><b>In / Out time report</b><div class="sub">Day-wise in and out times and hours for each person.</div>
+  <div class="btns"><button class="btn pri" id="pIO">Print In/Out report</button></div></div>
+  <div class="card"><b>Absent / Present (A/P) report</b><div class="sub">Month grid of P and A per person with totals.</div>
+  <div class="btns"><button class="btn pri" id="pAP">Print A/P report</button></div></div>
+  <div class="hint" style="margin:-2px 4px 0">In the print screen, choose <b>Save as PDF</b> as the printer.</div>
+  <div class="sec">Export CSV</div>
+  <div class="card"><div class="btns" style="margin-top:0">
+  <button class="btn" id="cAtt">Attendance (month)</button><button class="btn" id="cSum">Monthly summary</button><button class="btn" id="cStaff">Personnel list</button></div>
+  <div class="btns"><button class="btn pri" id="cMail">Email / share to ${esc(S.settings.email||OWNER_EMAIL)}</button></div>
+  <div class="hint">Share attaches the attendance CSV (pick Gmail on your phone). Where file sharing isn't supported, the CSV downloads and Gmail opens with the monthly summary.</div></div>`;
+  $('#rMonth').onchange=e=>{if(e.target.value){repMonth=e.target.value;}};
+  $('#rFor').onchange=e=>{repFor=e.target.value;};
+  $('#pIO').onclick=()=>printIO(repMonth);
+  $('#pAP').onclick=()=>printAP(repMonth);
+  $('#cAtt').onclick=()=>download(attCSV(repMonth),`Netto_Attendance_${repMonth}.csv`);
+  $('#cSum').onclick=()=>download(sumCSV(repMonth),`Netto_Summary_${repMonth}.csv`);
+  $('#cStaff').onclick=()=>download(staffCSV(),`Netto_Personnel_${today()}.csv`);
+  $('#cMail').onclick=()=>shareMail(repMonth);
+}
+
+/* ---------- CSV ---------- */
+const csvCell=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+const toCSV=rows=>'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+function attCSV(ym){
+  const rows=[['Date','Day','Sr No.','Name of Staff','Nature of work','For who','In','Out','Hours','Status']];
+  for(const ds of monthDays(ym))for(const st of repStaff(ym)){
+    const s=status(st,ds);if(s==='-')continue;const r=rec(ds,st.id)||{};
+    rows.push([ds,DOW[pd(ds).getDay()],st.sr,st.name,st.work,forLabel(st),fmt12(r.in),fmt12(r.out),fmtHrs(mins(r.in,r.out)),s]);
+  }
+  return toCSV(rows);
+}
+function sumCSV(ym){
+  const rows=[['Month','Sr No.','Name of Staff','Nature of work','For who','Present','Absent','Hours','Salary/month','Pro-rata (est.)']];
+  for(const st of repStaff(ym)){const m=monthStats(st,ym);rows.push([monthName(ym),st.sr,st.name,st.work,forLabel(st),m.P,m.A,fmtHrs(m.M)||0,st.salary||'',Math.round(m.pay)||'']);}
+  return toCSV(rows);
+}
+function staffCSV(){
+  return toCSV([['Sr No.','Name of Staff','Nature of work','For who','Start Date','End Date','Salary/month'],...sorted().map(st=>[st.sr,st.name,st.work,forLabel(st),st.start,st.end,st.salary||''])]);
+}
+function download(text,name,type){
+  const b=new Blob([text],{type:type||'text/csv;charset=utf-8'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);toast('Downloaded '+name);
+}
+function summaryText(ym){
+  return `Netto Home Attendance — ${monthName(ym)}\n\n`+repStaff(ym).map(st=>{const m=monthStats(st,ym);return `${st.sr}. ${st.name} (${forLabel(st)}): P ${m.P}, A ${m.A}, ${fmtHrs(m.M)||0} hrs`;}).join('\n');
+}
+async function shareMail(ym){
+  const name=`Netto_Attendance_${ym}.csv`,text=summaryText(ym);
+  try{
+    const f=new File([attCSV(ym)],name,{type:'text/csv'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Netto Home Attendance '+monthName(ym),text});return;}
+  }catch(e){if(e.name==='AbortError')return;}
+  download(attCSV(ym),name);
+  location.href=`mailto:${encodeURIComponent(S.settings.email||OWNER_EMAIL)}?subject=${encodeURIComponent('Netto Home Attendance — '+monthName(ym))}&body=${encodeURIComponent(text+'\n\n(CSV file downloaded on the device — attach it to this mail.)')}`;
+}
+
+/* ---------- print reports ---------- */
+function repHead(title,ym){return `<h2>Netto Home Attendance — ${title}</h2><div class="meta">${monthName(ym)}${repFor!=='All'?' · For: '+esc(repFor):''} · Printed ${fmtDate(today())} ${fmt12(nowHM())}</div>`;}
+function doPrint(html){$('#print').innerHTML=html;setTimeout(()=>window.print(),60);}
+function printIO(ym){
+  const list=repStaff(ym);if(!list.length)return toast('No personnel for this month');
+  const days=monthDays(ym);let html=repHead('In / Out Time Report',ym);
+  for(let i=0;i<list.length;i+=5){
+    const grp=list.slice(i,i+5);
+    html+=`<div class="blk"><table><thead><tr><th rowspan="2" style="width:32px">Date</th><th rowspan="2" style="width:34px">Day</th>${grp.map(st=>`<th colspan="3">${st.sr}. ${esc(st.name)}<br><span style="font-weight:400">${esc(st.work||'')} · ${esc(forLabel(st))}</span></th>`).join('')}</tr>
+    <tr>${grp.map(()=>'<th>In</th><th>Out</th><th>Hrs</th>').join('')}</tr></thead><tbody>`;
+    for(const ds of days){const d=pd(ds);
+      html+=`<tr class="${d.getDay()===0?'we':''}"><td>${d.getDate()}</td><td>${DOW[d.getDay()]}</td>`+grp.map(st=>{const s=status(st,ds);
+        if(s==='-')return '<td class="x" colspan="3">–</td>';if(s==='A')return '<td class="A" colspan="3">Absent</td>';
+        const r=rec(ds,st.id);return `<td>${fmt12(r.in)}</td><td>${fmt12(r.out)||'—'}</td><td>${fmtHrs(mins(r.in,r.out))}</td>`;}).join('')+'</tr>';}
+    html+=`<tr>${'<th colspan="2" class="l">Total</th>'}${grp.map(st=>{const m=monthStats(st,ym);return `<th colspan="3">P ${m.P} · A ${m.A} · ${fmtHrs(m.M)||0} hrs</th>`;}).join('')}</tr></tbody></table></div>`;
+  }
+  doPrint(html+`<div class="foot">P = Present (in time recorded), A = Absent, – = not employed / future date. Sundays shaded.</div>`);
+}
+function printAP(ym){
+  const list=repStaff(ym);if(!list.length)return toast('No personnel for this month');
+  const days=monthDays(ym);
+  let html=repHead('Absent / Present (A/P) Report',ym)+`<table><thead><tr><th>Sr</th><th class="l">Name</th><th class="l">Work / For</th>${days.map(ds=>{const d=pd(ds);return `<th style="padding:2px 1px">${d.getDate()}<br><span style="font-weight:400">${DOW[d.getDay()][0]}</span></th>`;}).join('')}<th>P</th><th>A</th><th>Hrs</th></tr></thead><tbody>`;
+  for(const st of list){const m=monthStats(st,ym);
+    html+=`<tr><td>${st.sr}</td><td class="l">${esc(st.name)}</td><td class="l">${esc(st.work||'')}${st.work?' / ':''}${esc(forLabel(st))}</td>`+
+    days.map(ds=>{const s=status(st,ds);return `<td class="${s==='-'?'x':s}" style="padding:2px 1px">${s}</td>`;}).join('')+
+    `<td><b>${m.P}</b></td><td><b>${m.A}</b></td><td>${fmtHrs(m.M)||0}</td></tr>`;}
+  doPrint(html+`</tbody></table><div class="foot">P = Present, A = Absent, – = not employed / future date.</div>`);
+}
+
+/* ---------- settings, backup, sync ---------- */
+function vSettings(){
+  const s=S.settings;
+  $('#app').innerHTML=`<div class="sec">Account</div>
+  <div class="card"><label class="f">Gmail ID for reports & sync<input id="sEmail" type="email" value="${esc(s.email||OWNER_EMAIL)}"></label>
+  <div class="btns"><button class="btn pri" id="sSaveE">Save</button></div></div>
+  <div class="sec">Google Sheet sync (optional)</div>
+  <div class="card"><div class="sub">Backs up every change to a Google Sheet in ${esc(s.email||OWNER_EMAIL)}'s Drive, so data survives a lost phone and can be loaded on another device. Setup steps are in the README.</div>
+  <div class="fg" style="margin-top:10px"><label class="f">Apps Script web app URL<input id="sUrl" value="${esc(s.syncUrl)}" placeholder="https://script.google.com/macros/s/…/exec"></label></div>
+  <div class="fg"><label class="f">Sync key (same as SYNC_KEY in the script)<input id="sKey" value="${esc(s.syncKey)}"></label></div>
+  <div class="btns"><button class="btn pri" id="sSaveU">Save</button><button class="btn" id="sPush" ${s.syncUrl?'':'disabled'}>Sync now</button><button class="btn" id="sPull" ${s.syncUrl?'':'disabled'}>Load from Sheet</button></div>
+  <div class="hint" id="sStat">${s.lastSync?'Last sync: '+new Date(s.lastSync).toLocaleString('en-IN'):'Not synced yet'}</div></div>
+  <div class="sec">Backup on this device</div>
+  <div class="card"><div class="btns" style="margin-top:0"><button class="btn" id="bExp">Download backup (.json)</button><button class="btn" id="bImp">Restore backup</button></div>
+  <input type="file" id="bFile" accept=".json,application/json" style="display:none">
+  <div class="hint">Data is stored on this phone. Download a backup regularly if you don't use Google Sheet sync.</div></div>
+  <div class="sec">About</div><div class="card sub">Netto Home Attendance v1.0 · Edits allowed for the last ${EDIT_DAYS} days · ${S.staff.length} personnel · ${Object.keys(S.att).length} days with records</div>`;
+  $('#sSaveE').onclick=()=>{s.email=$('#sEmail').value.trim()||OWNER_EMAIL;save();toast('Saved');};
+  $('#sSaveU').onclick=()=>{s.syncUrl=$('#sUrl').value.trim();s.syncKey=$('#sKey').value.trim();save();toast('Saved');render();};
+  $('#sPush').onclick=()=>pushSync(true);
+  $('#sPull').onclick=pullSync;
+  $('#bExp').onclick=()=>download(JSON.stringify(S,null,1),`Netto_Attendance_Backup_${today()}.json`,'application/json');
+  $('#bImp').onclick=()=>$('#bFile').click();
+  $('#bFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!Array.isArray(d.staff))throw 0;
+    if(!confirm(`Replace all data on this device with the backup (${d.staff.length} personnel)?`))return;applyData(d);toast('Backup restored');render();}catch(_){toast('Not a valid backup file');}};rd.readAsText(f);};
+}
+function applyData(d){const keep=S.settings;S=Object.assign(blank(),d);S.settings=Object.assign({},keep,{lastSync:keep.lastSync});save();}
+let syncT;
+function scheduleSync(){if(!S.settings.syncUrl)return;clearTimeout(syncT);syncT=setTimeout(()=>pushSync(false),2500);}
+async function pushSync(manual){
+  const s=S.settings;if(!s.syncUrl)return;
+  if(!navigator.onLine){if(manual)toast('Offline — will sync when back online');return;}
+  const data=Object.assign({},S,{settings:{email:s.email}});
+  try{
+    await fetch(s.syncUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'save',key:s.syncKey,email:s.email,data})});
+    s.lastSync=Date.now();localStorage.setItem(KEY,JSON.stringify(S));
+    if(manual)toast('Sent to Google Sheet');const el=$('#sStat');if(el)el.textContent='Last sync: '+new Date(s.lastSync).toLocaleString('en-IN');
+  }catch(e){if(manual)toast('Sync failed — check the URL');}
+}
+async function pullSync(){
+  const s=S.settings;
+  try{
+    const r=await fetch(s.syncUrl+(s.syncUrl.includes('?')?'&':'?')+'action=load&key='+encodeURIComponent(s.syncKey));
+    const j=await r.json();if(!j.ok)throw new Error(j.error||'error');
+    if(!j.data||!Array.isArray(j.data.staff))return toast('No data in the Sheet yet');
+    if(!confirm(`Replace data on this device with the Sheet copy (${j.data.staff.length} personnel, saved ${j.data.updated?new Date(j.data.updated).toLocaleString('en-IN'):'unknown'})?`))return;
+    applyData(j.data);toast('Loaded from Google Sheet');render();
+  }catch(e){toast('Could not load: '+(e.message||'check URL / key'));}
+}
+window.addEventListener('online',()=>scheduleSync());
+
+/* ---------- modal & clock ---------- */
+function openModal(h){$('#sheet').innerHTML=h;$('#modal').classList.add('on');}
+function closeModal(){$('#modal').classList.remove('on');}
+$('#modal').onclick=e=>{if(e.target.id==='modal')closeModal();};
+function tick(){const d=new Date();$('#clock').textContent=d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' · '+fmt12(nowHM());}
+let lastDay=today();
+setInterval(()=>{tick();const t=today();if(t!==lastDay){if(curDate===lastDay)curDate=t;lastDay=t;}
+  if(view==='today'&&!$('#modal').classList.contains('on')&&!(document.activeElement&&document.activeElement.tagName==='INPUT'))render();},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();if(view==='today')render();}});
+tick();render();
+if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
