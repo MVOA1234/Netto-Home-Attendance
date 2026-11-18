@@ -67,10 +67,18 @@ table.t td.n,table.t th.n{text-align:right}
 .days div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--bd)}
 .hint{font-size:12.5px;color:var(--mu);margin-top:6px}
 #print{display:none}
+#lock{position:fixed;inset:0;z-index:100;background:var(--g);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+#lock.off{display:none}
+#lock img{width:76px;height:76px;border-radius:18px;margin-bottom:14px}
+#lock h2{margin:0 0 4px;font-size:20px}
+#lock p{margin:0 0 18px;opacity:.85;font-size:14px;min-height:20px}
+#lock input{max-width:220px;text-align:center;font-size:26px;letter-spacing:10px;padding:10px;border:0;border-radius:12px}
+#lock .btn{margin-top:14px;min-width:220px;background:#fff;color:var(--g);border:0;padding:12px}
+#lock a{color:#fff;opacity:.75;font-size:13px;margin-top:22px;text-decoration:underline;cursor:pointer}
 @media print{
   @page{size:A4 landscape;margin:9mm}
   body{background:#fff}
-  header,nav,main,#toast,.modal{display:none!important}
+  header,nav,main,#toast,.modal,#lock{display:none!important}
   #print{display:block;font:10px/1.3 Arial,sans-serif;color:#000}
   #print h2{font-size:15px;margin:0 0 2px}
   #print .meta{font-size:10px;color:#444;margin-bottom:8px}
@@ -100,11 +108,14 @@ table.t td.n,table.t th.n{text-align:right}
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 <div id="toast"></div>
 <div id="print"></div>
+<div id="lock"><img src="icon-192.png" alt=""><h2>Netto Home Attendance</h2><p id="lMsg">Enter PIN</p>
+<input type="password" id="lPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off">
+<button class="btn" id="lBtn">Unlock</button><a id="lForgot">Forgot PIN?</a></div>
 
 <script>
 'use strict';
 const KEY='netto_home_att_v1';
-const OWNER_EMAIL='navindewaji@gmail.com';
+const OWNER_EMAIL='jonathannetto2003@gmail.com';
 const FOR_OPTS=['Jonu','Hosu','Home','Other'];
 const EDIT_DAYS=7;
 const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -114,7 +125,7 @@ const MON=['January','February','March','April','May','June','July','August','Se
 function blank(){return {staff:[],att:{},nextSr:1,settings:{email:OWNER_EMAIL,syncUrl:'',syncKey:''},updated:0}}
 function load(){
   try{const s=JSON.parse(localStorage.getItem(KEY));
-    if(s&&Array.isArray(s.staff)){const b=blank();s.att=s.att||{};s.settings=Object.assign(b.settings,s.settings||{});s.nextSr=s.nextSr||(s.staff.reduce((m,x)=>Math.max(m,x.sr||0),0)+1);return s;}
+    if(s&&Array.isArray(s.staff)){const b=blank();s.att=s.att||{};s.settings=Object.assign(b.settings,s.settings||{});if(!s.settings.email||s.settings.email==='navindewaji@gmail.com')s.settings.email=OWNER_EMAIL;s.nextSr=s.nextSr||(s.staff.reduce((m,x)=>Math.max(m,x.sr||0),0)+1);return s;}
   }catch(e){}
   return blank();
 }
@@ -410,13 +421,17 @@ function vSettings(){
   <div class="fg"><label class="f">Sync key (same as SYNC_KEY in the script)<input id="sKey" value="${esc(s.syncKey)}"></label></div>
   <div class="btns"><button class="btn pri" id="sSaveU">Save</button><button class="btn" id="sPush" ${s.syncUrl?'':'disabled'}>Sync now</button><button class="btn" id="sPull" ${s.syncUrl?'':'disabled'}>Load from Sheet</button></div>
   <div class="hint" id="sStat">${s.lastSync?'Last sync: '+new Date(s.lastSync).toLocaleString('en-IN'):'Not synced yet'}</div></div>
+  <div class="sec">Security</div>
+  <div class="card"><div class="sub">The app asks for the PIN when opened and after being in the background for over a minute.</div>
+  <div class="btns"><button class="btn" id="sPin">Change PIN</button><button class="btn" id="sLock">Lock now</button></div></div>
   <div class="sec">Backup on this device</div>
   <div class="card"><div class="btns" style="margin-top:0"><button class="btn" id="bExp">Download backup (.json)</button><button class="btn" id="bImp">Restore backup</button></div>
   <input type="file" id="bFile" accept=".json,application/json" style="display:none">
   <div class="hint">Data is stored on this phone. Download a backup regularly if you don't use Google Sheet sync.</div></div>
-  <div class="sec">About</div><div class="card sub">Netto Home Attendance v1.0 · Edits allowed for the last ${EDIT_DAYS} days · ${S.staff.length} personnel · ${Object.keys(S.att).length} days with records</div>`;
+  <div class="sec">About</div><div class="card sub">Netto Home Attendance v1.1 · Edits allowed for the last ${EDIT_DAYS} days · ${S.staff.length} personnel · ${Object.keys(S.att).length} days with records</div>`;
   $('#sSaveE').onclick=()=>{s.email=$('#sEmail').value.trim()||OWNER_EMAIL;save();toast('Saved');};
   $('#sSaveU').onclick=()=>{s.syncUrl=$('#sUrl').value.trim();s.syncKey=$('#sKey').value.trim();save();toast('Saved');render();};
+  $('#sPin').onclick=()=>showLock('change');$('#sLock').onclick=()=>showLock('unlock');
   $('#sPush').onclick=()=>pushSync(true);
   $('#sPull').onclick=pullSync;
   $('#bExp').onclick=()=>download(JSON.stringify(S,null,1),`Netto_Attendance_Backup_${today()}.json`,'application/json');
@@ -459,6 +474,44 @@ setInterval(()=>{tick();const t=today();if(t!==lastDay){if(curDate===lastDay)cur
   if(view==='today'&&!$('#modal').classList.contains('on')&&!(document.activeElement&&document.activeElement.tagName==='INPUT'))render();},30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();if(view==='today')render();}});
 tick();render();
+
+/* ---------- PIN lock ---------- */
+const PIN_KEY='netto_home_pin_v1',LOCK_AFTER=60000;
+let pinMode='unlock',pinFirst='',pinFails=0,pinWait=0,hiddenAt=0;
+async function hashPin(p){const t='netto-home|'+p;
+  if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+  let h=5381;for(const c of t)h=((h*33)^c.charCodeAt(0))>>>0;return 'h'+h.toString(16);}
+const pinSet=()=>!!localStorage.getItem(PIN_KEY);
+function showLock(mode){pinMode=mode||(pinSet()?'unlock':'new');pinFirst='';
+  $('#lMsg').textContent={unlock:'Enter PIN',new:'Create a 4–6 digit PIN',change:'Enter current PIN'}[pinMode];
+  $('#lBtn').textContent=pinMode==='unlock'?'Unlock':'Next';
+  $('#lForgot').style.display=pinMode==='unlock'?'':'none';
+  $('#lock').classList.remove('off');closeModal();const i=$('#lPin');i.value='';setTimeout(()=>i.focus(),80);}
+async function pinSubmit(){
+  const i=$('#lPin'),v=i.value.trim(),m=$('#lMsg');
+  if(Date.now()<pinWait){m.textContent='Too many tries — wait '+Math.ceil((pinWait-Date.now())/1000)+'s';return;}
+  if(!/^\d{4,6}$/.test(v)){m.textContent='PIN must be 4 to 6 digits';return;}
+  if(pinMode==='unlock'||pinMode==='change'){
+    if(await hashPin(v)===localStorage.getItem(PIN_KEY)){pinFails=0;
+      if(pinMode==='change'){pinMode='new';pinFirst='';i.value='';m.textContent='Enter new 4–6 digit PIN';$('#lBtn').textContent='Next';return;}
+      $('#lock').classList.add('off');i.value='';i.blur();render();}
+    else{pinFails++;i.value='';if(pinFails>=5){pinWait=Date.now()+30000;pinFails=0;m.textContent='Too many wrong tries — wait 30s';}else m.textContent='Wrong PIN, try again';}
+    return;}
+  if(!pinFirst){pinFirst=v;i.value='';m.textContent='Re-enter the PIN to confirm';$('#lBtn').textContent='Save PIN';return;}
+  if(v!==pinFirst){pinFirst='';i.value='';m.textContent="PINs didn't match — create PIN again";$('#lBtn').textContent='Next';return;}
+  localStorage.setItem(PIN_KEY,await hashPin(v));$('#lock').classList.add('off');i.value='';i.blur();toast('PIN saved');render();
+}
+$('#lBtn').onclick=pinSubmit;
+$('#lPin').onkeydown=e=>{if(e.key==='Enter')pinSubmit();};
+$('#lPin').oninput=async e=>{const v=e.target.value;if(pinMode==='unlock'&&v.length>=4&&Date.now()>=pinWait&&await hashPin(v)===localStorage.getItem(PIN_KEY))pinSubmit();};
+$('#lForgot').onclick=()=>{
+  if(!confirm('Reset the PIN?\n\nFor security this ERASES all attendance data on this phone. You can then restore it from the Google Sheet (Settings → Load from Sheet) or from a backup file.'))return;
+  if(!confirm('Erase all data on this phone and set a new PIN?'))return;
+  const keep={syncUrl:S.settings.syncUrl,syncKey:S.settings.syncKey};
+  localStorage.removeItem(PIN_KEY);S=blank();Object.assign(S.settings,keep);localStorage.setItem(KEY,JSON.stringify(S));
+  curDate=today();go('settings');showLock('new');};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenAt=Date.now();else if(hiddenAt&&Date.now()-hiddenAt>LOCK_AFTER&&$('#lock').classList.contains('off'))showLock('unlock');});
+showLock();
 if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
