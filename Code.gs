@@ -1,11 +1,11 @@
 /**
  * Netto Home Attendance — Google Sheet sync
- * Paste into a Google Sheet's Apps Script (signed in as navindewaji@gmail.com).
+ * Paste into a Google Sheet's Apps Script (signed in as jonathannetto2003@gmail.com).
  * Deploy > New deployment > Web app > Execute as: Me, Who has access: Anyone.
  * Copy the /exec URL into the app (Settings > Google Sheet sync) together with SYNC_KEY.
  */
 const SYNC_KEY = 'change-this-key';   // choose any secret word; enter the same in the app
-const OWNER = 'navindewaji@gmail.com';
+const OWNER = 'jonathannetto2003@gmail.com';
 const CHUNK = 40000;
 
 function doPost(e) {
