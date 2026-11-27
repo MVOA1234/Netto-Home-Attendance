@@ -122,10 +122,10 @@ const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- storage ---------- */
-function blank(){return {staff:[],att:{},nextSr:1,settings:{email:OWNER_EMAIL,syncUrl:'',syncKey:''},updated:0}}
+function blank(){return {staff:[],att:{},deleted:{},nextSr:1,settings:{email:OWNER_EMAIL,syncUrl:'',syncKey:''},updated:0}}
 function load(){
   try{const s=JSON.parse(localStorage.getItem(KEY));
-    if(s&&Array.isArray(s.staff)){const b=blank();s.att=s.att||{};s.settings=Object.assign(b.settings,s.settings||{});if(!s.settings.email||s.settings.email==='navindewaji@gmail.com')s.settings.email=OWNER_EMAIL;s.nextSr=s.nextSr||(s.staff.reduce((m,x)=>Math.max(m,x.sr||0),0)+1);return s;}
+    if(s&&Array.isArray(s.staff)){const b=blank();s.att=s.att||{};s.deleted=s.deleted||{};s.settings=Object.assign(b.settings,s.settings||{});if(!s.settings.email||s.settings.email==='navindewaji@gmail.com')s.settings.email=OWNER_EMAIL;s.nextSr=s.nextSr||(s.staff.reduce((m,x)=>Math.max(m,x.sr||0),0)+1);return s;}
   }catch(e){}
   return blank();
 }
@@ -168,8 +168,7 @@ function setTime(ds,id,field,val){
   if(field==='out'&&val&&!r.in){toast('Enter the In time first');return false;}
   r[field]=val||'';
   if(field==='in'&&!val){r.out='';}
-  if(!r.in&&!r.out){delete day[id];}else{r.ts=Date.now();day[id]=r;}
-  if(Object.keys(day).length)S.att[ds]=day;else delete S.att[ds];
+  r.ts=Date.now();day[id]=r;S.att[ds]=day;
   save();return true;
 }
 
@@ -202,6 +201,7 @@ function vToday(){
     <button class="btn" id="dNext" ${isT?'disabled':''}>›</button></div>
     <div class="row" style="margin-top:8px"><span class="sub">${fmtDate(ds)}${isT?' · Today':''}</span>
     ${isT?'':'<button class="btn sm" id="dToday">Go to today</button>'}</div>
+    <div class="hint" id="syncLine">${syncLineText()}</div>
     ${isT?'':`<div class="hint">Entering data for an earlier day. Records from ${fmtDate(minEdit())} onwards can be added or edited.</div>`}
   </div>
   <div class="stats"><div class="stat"><b>${pres}</b><span>Present</span></div>
@@ -303,16 +303,16 @@ function editStaff(id){
     if(!v.start)return toast('Start date is required');
     if(v.end&&v.end<v.start)return toast('End date is before start date');
     if(v.forWho==='Other'&&!v.forOther)return toast('Enter who this person works for');
-    if(id)Object.assign(st,v);else S.staff.push(Object.assign({id:uid(),sr:S.nextSr++},v));
+    v.ts=Date.now();if(id)Object.assign(st,v);else S.staff.push(Object.assign({id:uid(),sr:S.nextSr++},v));
     save();closeModal();toast('Saved');render();
   };
   setTimeout(()=>$('#fName').focus(),100);
 }
 function delStaff(id){
   const st=S.staff.find(x=>x.id===id);
-  const n=Object.values(S.att).filter(d=>d[id]).length;
+  const n=Object.values(S.att).filter(d=>d[id]&&d[id].in).length;
   if(!confirm(`Delete ${st.name}?${n?`\n\nThis also deletes ${n} attendance record(s). Tip: to keep history, edit and set an End date instead.`:''}`))return;
-  S.staff=S.staff.filter(x=>x.id!==id);
+  S.staff=S.staff.filter(x=>x.id!==id);S.deleted[id]=Date.now();
   for(const d of Object.keys(S.att)){delete S.att[d][id];if(!Object.keys(S.att[d]).length)delete S.att[d];}
   save();toast('Deleted');render();
 }
@@ -415,12 +415,16 @@ function vSettings(){
   $('#app').innerHTML=`<div class="sec">Account</div>
   <div class="card"><label class="f">Gmail ID for reports & sync<input id="sEmail" type="email" value="${esc(s.email||OWNER_EMAIL)}"></label>
   <div class="btns"><button class="btn pri" id="sSaveE">Save</button></div></div>
-  <div class="sec">Google Sheet sync (optional)</div>
-  <div class="card"><div class="sub">Backs up every change to a Google Sheet in ${esc(s.email||OWNER_EMAIL)}'s Drive, so data survives a lost phone and can be loaded on another device. Setup steps are in the README.</div>
+  <div class="sec">Google Sheet sync (shares data between phones)</div>
+  <div class="card"><div class="sub">Every phone with the same URL and key sees the same personnel and attendance. Changes are merged and synced automatically when the app is open (about every minute) and after each entry. Setup steps are in the README.</div>
   <div class="fg" style="margin-top:10px"><label class="f">Apps Script web app URL<input id="sUrl" value="${esc(s.syncUrl)}" placeholder="https://script.google.com/macros/s/…/exec"></label></div>
   <div class="fg"><label class="f">Sync key (same as SYNC_KEY in the script)<input id="sKey" value="${esc(s.syncKey)}"></label></div>
-  <div class="btns"><button class="btn pri" id="sSaveU">Save</button><button class="btn" id="sPush" ${s.syncUrl?'':'disabled'}>Sync now</button><button class="btn" id="sPull" ${s.syncUrl?'':'disabled'}>Load from Sheet</button></div>
-  <div class="hint" id="sStat">${s.lastSync?'Last sync: '+new Date(s.lastSync).toLocaleString('en-IN'):'Not synced yet'}</div></div>
+  <div class="btns"><button class="btn pri" id="sSaveU">Save</button><button class="btn" id="sPush" ${s.syncUrl?'':'disabled'}>Sync now</button></div>
+  <div class="hint" id="sStat">${esc(syncLineText(true))}</div>
+  <details style="margin-top:10px"><summary class="sub" style="cursor:pointer">Advanced: replace instead of merge</summary>
+  <div class="btns"><button class="btn sm" id="sPull" ${s.syncUrl?'':'disabled'}>Replace this phone with Sheet copy</button>
+  <button class="btn sm dan" id="sRepl" ${s.syncUrl?'':'disabled'}>Replace Sheet with this phone's data</button></div>
+  <div class="hint">Use only to fix duplicates or a wrong setup. Normal syncing merges both ways.</div></details></div>
   <div class="sec">Security</div>
   <div class="card"><div class="sub">The app asks for the PIN when opened and after being in the background for over a minute.</div>
   <div class="btns"><button class="btn" id="sPin">Change PIN</button><button class="btn" id="sLock">Lock now</button></div></div>
@@ -428,41 +432,85 @@ function vSettings(){
   <div class="card"><div class="btns" style="margin-top:0"><button class="btn" id="bExp">Download backup (.json)</button><button class="btn" id="bImp">Restore backup</button></div>
   <input type="file" id="bFile" accept=".json,application/json" style="display:none">
   <div class="hint">Data is stored on this phone. Download a backup regularly if you don't use Google Sheet sync.</div></div>
-  <div class="sec">About</div><div class="card sub">Netto Home Attendance v1.1 · Edits allowed for the last ${EDIT_DAYS} days · ${S.staff.length} personnel · ${Object.keys(S.att).length} days with records</div>`;
+  <div class="sec">About</div><div class="card sub">Netto Home Attendance v1.2 · Edits allowed for the last ${EDIT_DAYS} days · ${S.staff.length} personnel · ${Object.keys(S.att).filter(d=>Object.values(S.att[d]).some(r=>r.in)).length} days with records</div>`;
   $('#sSaveE').onclick=()=>{s.email=$('#sEmail').value.trim()||OWNER_EMAIL;save();toast('Saved');};
-  $('#sSaveU').onclick=()=>{s.syncUrl=$('#sUrl').value.trim();s.syncKey=$('#sKey').value.trim();save();toast('Saved');render();};
+  $('#sSaveU').onclick=()=>{s.syncUrl=$('#sUrl').value.trim();s.syncKey=$('#sKey').value.trim();localStorage.setItem(KEY,JSON.stringify(S));toast('Saved');render();syncNow(true);};
   $('#sPin').onclick=()=>showLock('change');$('#sLock').onclick=()=>showLock('unlock');
-  $('#sPush').onclick=()=>pushSync(true);
-  $('#sPull').onclick=pullSync;
+  $('#sPush').onclick=()=>syncNow(true);
+  $('#sPull').onclick=pullSync;$('#sRepl').onclick=replaceSheet;
   $('#bExp').onclick=()=>download(JSON.stringify(S,null,1),`Netto_Attendance_Backup_${today()}.json`,'application/json');
   $('#bImp').onclick=()=>$('#bFile').click();
   $('#bFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!Array.isArray(d.staff))throw 0;
     if(!confirm(`Replace all data on this device with the backup (${d.staff.length} personnel)?`))return;applyData(d);toast('Backup restored');render();}catch(_){toast('Not a valid backup file');}};rd.readAsText(f);};
 }
-function applyData(d){const keep=S.settings;S=Object.assign(blank(),d);S.settings=Object.assign({},keep,{lastSync:keep.lastSync});save();}
-let syncT;
-function scheduleSync(){if(!S.settings.syncUrl)return;clearTimeout(syncT);syncT=setTimeout(()=>pushSync(false),2500);}
-async function pushSync(manual){
-  const s=S.settings;if(!s.syncUrl)return;
-  if(!navigator.onLine){if(manual)toast('Offline — will sync when back online');return;}
-  const data=Object.assign({},S,{settings:{email:s.email}});
+function applyData(d){const keep=S.settings;S=Object.assign(blank(),d);S.deleted=S.deleted||{};S.settings=Object.assign({},keep);save();}
+
+/* Two-way merge: newest change wins per person and per day; deletions are remembered. */
+function mergeData(a,b){
+  a=a||{};b=b||{};
+  const del=Object.assign({},a.deleted||{});
+  for(const[k,v]of Object.entries(b.deleted||{}))del[k]=Math.max(del[k]||0,v);
+  const sm={};
+  for(const st of[...(a.staff||[]),...(b.staff||[])]){const o=sm[st.id];if(!o||(st.ts||0)>(o.ts||0))sm[st.id]=st;}
+  const staff=Object.values(sm).filter(st=>!(del[st.id]>=(st.ts||0)));
+  const ids=new Set(staff.map(x=>x.id));const att={};
+  for(const src of[a.att||{},b.att||{}])for(const[ds,day]of Object.entries(src))for(const[id,r]of Object.entries(day||{})){
+    if(!ids.has(id))continue;const o=(att[ds]||{})[id];if(!o||(r.ts||0)>(o.ts||0))(att[ds]=att[ds]||{})[id]=r;}
+  return{staff,att,deleted:del,nextSr:Math.max(a.nextSr||1,b.nextSr||1,...staff.map(x=>(x.sr||0)+1)),updated:Math.max(a.updated||0,b.updated||0)};
+}
+const payload=()=>({staff:S.staff,att:S.att,deleted:S.deleted,nextSr:S.nextSr,updated:S.updated});
+let syncMsg='',syncing=false,syncAgain=false,syncT;
+function syncLineText(long){
+  const s=S.settings;if(!s.syncUrl)return long?'Not connected — enter the URL and key, then Save.':'☁ Not syncing between phones — set up in Settings';
+  if(syncMsg)return syncMsg;
+  return s.lastSync?'☁ Synced '+(long?new Date(s.lastSync).toLocaleString('en-IN'):fmt12(pad(new Date(s.lastSync).getHours())+':'+pad(new Date(s.lastSync).getMinutes()))):'☁ Not synced yet';
+}
+function showSync(m){syncMsg=m||'';for(const id of['#syncLine','#sStat']){const el=$(id);if(el)el.textContent=syncLineText(id==='#sStat');}}
+function scheduleSync(){if(!S.settings.syncUrl)return;clearTimeout(syncT);syncT=setTimeout(()=>syncNow(false),1500);}
+function unlocked(){const l=$('#lock');return !l||l.classList.contains('off');}
+async function postSync(body){
+  const s=S.settings;
+  const r=await fetch(s.syncUrl,{method:'POST',body:JSON.stringify(Object.assign({key:s.syncKey,email:s.email},body))});
+  const j=await r.json();if(!j.ok)throw new Error(j.error||'Sync error');return j;
+}
+async function syncNow(manual){
+  const s=S.settings;if(!s.syncUrl){if(manual)toast('Enter the Apps Script URL and sync key first');return;}
+  if(!unlocked())return;
+  if(syncing){syncAgain=true;return;}
+  if(!navigator.onLine){showSync('☁ Offline — will sync when back online');return;}
+  syncing=true;showSync('☁ Syncing…');
   try{
-    await fetch(s.syncUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'save',key:s.syncKey,email:s.email,data})});
-    s.lastSync=Date.now();localStorage.setItem(KEY,JSON.stringify(S));
-    if(manual)toast('Sent to Google Sheet');const el=$('#sStat');if(el)el.textContent='Last sync: '+new Date(s.lastSync).toLocaleString('en-IN');
-  }catch(e){if(manual)toast('Sync failed — check the URL');}
+    const before=JSON.stringify(payload());
+    const j=await postSync({action:'sync',data:payload()});
+    const m=mergeData(payload(),j.data);
+    const changed=JSON.stringify({s:m.staff,a:m.att})!==JSON.stringify({s:S.staff,a:S.att});
+    Object.assign(S,m);s.lastSync=Date.now();localStorage.setItem(KEY,JSON.stringify(S));
+    showSync('');if(manual)toast('Synced with Google Sheet');
+    if(changed&&!$('#modal').classList.contains('on')&&!(document.activeElement&&document.activeElement.tagName==='INPUT'))render();
+    if(JSON.stringify(payload())!==before&&!changed)syncAgain=true;
+  }catch(e){
+    const msg=/key/i.test(e.message)?'Wrong sync key':(/Unexpected|JSON|Failed to fetch|NetworkError|Load failed/i.test(e.message)?'Cannot reach the Sheet — check the URL and that the script is updated':e.message);
+    showSync('⚠ Sync failed: '+msg);if(manual)toast('Sync failed: '+msg);
+  }finally{syncing=false;if(syncAgain){syncAgain=false;scheduleSync();}}
 }
 async function pullSync(){
-  const s=S.settings;
   try{
-    const r=await fetch(s.syncUrl+(s.syncUrl.includes('?')?'&':'?')+'action=load&key='+encodeURIComponent(s.syncKey));
+    const s=S.settings;const r=await fetch(s.syncUrl+(s.syncUrl.includes('?')?'&':'?')+'action=load&key='+encodeURIComponent(s.syncKey));
     const j=await r.json();if(!j.ok)throw new Error(j.error||'error');
     if(!j.data||!Array.isArray(j.data.staff))return toast('No data in the Sheet yet');
-    if(!confirm(`Replace data on this device with the Sheet copy (${j.data.staff.length} personnel, saved ${j.data.updated?new Date(j.data.updated).toLocaleString('en-IN'):'unknown'})?`))return;
-    applyData(j.data);toast('Loaded from Google Sheet');render();
+    if(!confirm(`Replace ALL data on this phone with the Sheet copy (${j.data.staff.length} personnel)?`))return;
+    const keep=S.settings;S=Object.assign(blank(),j.data);S.deleted=S.deleted||{};S.settings=keep;S.settings.lastSync=Date.now();
+    localStorage.setItem(KEY,JSON.stringify(S));showSync('');toast('Loaded from Google Sheet');render();
   }catch(e){toast('Could not load: '+(e.message||'check URL / key'));}
 }
+async function replaceSheet(){
+  if(!confirm(`Replace ALL data in the Google Sheet with this phone's data (${S.staff.length} personnel)?\n\nOther phones will then receive this phone's data. Entries that exist only on other phones and have not synced yet will be lost.`))return;
+  try{await postSync({action:'replace',data:payload()});S.settings.lastSync=Date.now();localStorage.setItem(KEY,JSON.stringify(S));showSync('');toast('Sheet replaced with this phone\'s data');}
+  catch(e){toast('Failed: '+e.message);}
+}
 window.addEventListener('online',()=>scheduleSync());
+setInterval(()=>{if(!document.hidden)syncNow(false);},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>syncNow(false),400);});
 
 /* ---------- modal & clock ---------- */
 function openModal(h){$('#sheet').innerHTML=h;$('#modal').classList.add('on');}
@@ -494,18 +542,18 @@ async function pinSubmit(){
   if(pinMode==='unlock'||pinMode==='change'){
     if(await hashPin(v)===localStorage.getItem(PIN_KEY)){pinFails=0;
       if(pinMode==='change'){pinMode='new';pinFirst='';i.value='';m.textContent='Enter new 4–6 digit PIN';$('#lBtn').textContent='Next';return;}
-      $('#lock').classList.add('off');i.value='';i.blur();render();}
+      $('#lock').classList.add('off');i.value='';i.blur();render();syncNow(false);}
     else{pinFails++;i.value='';if(pinFails>=5){pinWait=Date.now()+30000;pinFails=0;m.textContent='Too many wrong tries — wait 30s';}else m.textContent='Wrong PIN, try again';}
     return;}
   if(!pinFirst){pinFirst=v;i.value='';m.textContent='Re-enter the PIN to confirm';$('#lBtn').textContent='Save PIN';return;}
   if(v!==pinFirst){pinFirst='';i.value='';m.textContent="PINs didn't match — create PIN again";$('#lBtn').textContent='Next';return;}
-  localStorage.setItem(PIN_KEY,await hashPin(v));$('#lock').classList.add('off');i.value='';i.blur();toast('PIN saved');render();
+  localStorage.setItem(PIN_KEY,await hashPin(v));$('#lock').classList.add('off');i.value='';i.blur();toast('PIN saved');render();syncNow(false);
 }
 $('#lBtn').onclick=pinSubmit;
 $('#lPin').onkeydown=e=>{if(e.key==='Enter')pinSubmit();};
 $('#lPin').oninput=async e=>{const v=e.target.value;if(pinMode==='unlock'&&v.length>=4&&Date.now()>=pinWait&&await hashPin(v)===localStorage.getItem(PIN_KEY))pinSubmit();};
 $('#lForgot').onclick=()=>{
-  if(!confirm('Reset the PIN?\n\nFor security this ERASES all attendance data on this phone. You can then restore it from the Google Sheet (Settings → Load from Sheet) or from a backup file.'))return;
+  if(!confirm('Reset the PIN?\n\nFor security this ERASES all attendance data on this phone. If Google Sheet sync is set up, the data comes back automatically after you set a new PIN; otherwise restore it from a backup file.'))return;
   if(!confirm('Erase all data on this phone and set a new PIN?'))return;
   const keep={syncUrl:S.settings.syncUrl,syncKey:S.settings.syncKey};
   localStorage.removeItem(PIN_KEY);S=blank();Object.assign(S.settings,keep);localStorage.setItem(KEY,JSON.stringify(S));
